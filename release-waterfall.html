@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<title>Release Waterfall</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky title strip, one scroll pane with frozen task column and frozen date header; right drawer (bottom sheet on phones) edits a task. */
+:root{
+  color-scheme:dark;
+  --bg:#14110e; --surface:#1b1713; --surface2:#231e19; --line:#342d26; --grid:#ffffff0b; --wk:#ffffff09;
+  --fg:#f2ece3; --muted:#a89f92; --faint:#6f675c; --accent:#ff4a3a; --today:#ffd23f; --warn:#ff7a66; --dep:#b9b0a3; --hover:#ffffff0d;
+  --o-cheez:#ff6a55; --o-jacob:#ffd23f; --o-josh:#35d6c0; --o-justin:#86e05f; --o-liam:#62b4ff; --o-vrish:#c490ff; --o-group:#ff7eb9; --o-tbd:#8f877b;
+  --lw:340px;
+  --display:'Anton','Impact','Arial Narrow',sans-serif;
+  --body:'Instrument Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    color-scheme:light;
+    --bg:#f3f2ef; --surface:#ffffff; --surface2:#ebe9e5; --line:#d9d5ce; --grid:#00000010; --wk:#0000000a;
+    --fg:#1d1a16; --muted:#6b645a; --faint:#a29a8e; --accent:#d92b1c; --today:#f2b800; --warn:#c4361f; --dep:#5e574d; --hover:#00000008;
+    --o-cheez:#e0402b; --o-jacob:#d9a400; --o-josh:#0e9f8d; --o-justin:#3f9f22; --o-liam:#1f72d8; --o-vrish:#7d45d1; --o-group:#cf3b8a; --o-tbd:#8a8276;
+  }
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f3f2ef; --surface:#ffffff; --surface2:#ebe9e5; --line:#d9d5ce; --grid:#00000010; --wk:#0000000a;
+  --fg:#1d1a16; --muted:#6b645a; --faint:#a29a8e; --accent:#d92b1c; --today:#f2b800; --warn:#c4361f; --dep:#5e574d; --hover:#00000008;
+  --o-cheez:#e0402b; --o-jacob:#d9a400; --o-josh:#0e9f8d; --o-justin:#3f9f22; --o-liam:#1f72d8; --o-vrish:#7d45d1; --o-group:#cf3b8a; --o-tbd:#8a8276;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#14110e; --surface:#1b1713; --surface2:#231e19; --line:#342d26; --grid:#ffffff0b; --wk:#ffffff09;
+  --fg:#f2ece3; --muted:#a89f92; --faint:#6f675c; --accent:#ff4a3a; --today:#ffd23f; --warn:#ff7a66; --dep:#b9b0a3; --hover:#ffffff0d;
+  --o-cheez:#ff6a55; --o-jacob:#ffd23f; --o-josh:#35d6c0; --o-justin:#86e05f; --o-liam:#62b4ff; --o-vrish:#c490ff; --o-group:#ff7eb9; --o-tbd:#8f877b;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;line-height:1.4;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 24px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--today);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 24px;margin-bottom:12px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,5vw,44px);line-height:1;letter-spacing:.02em;text-transform:uppercase;margin:0;text-wrap:balance}
+h1 em{font-style:normal;color:var(--accent)}
+.sub{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px}
+#sync{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+#sync i{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+#sync[data-s="shared"] i,#sync[data-s="saved"] i{background:var(--o-justin)}
+#sync[data-s="saving"] i{background:var(--today)}
+#sync[data-s="readonly"] i,#sync[data-s="slow"] i{background:var(--warn)}
+#stats{margin:0 0 12px;max-width:80ch;color:var(--muted)}
+#stats b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+#stats .bad{color:var(--warn)}
+.bar-tools{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-bottom:12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.fchip,.btn,.seg button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 11px;font-size:13px;display:inline-flex;align-items:center;gap:7px;min-height:30px}
+.fchip i,.own i{width:9px;height:9px;border-radius:50%;background:var(--c,var(--faint));flex:none}
+.fchip[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.fchip:hover:not([aria-pressed="true"]),.btn:hover,.seg button:hover{background:var(--surface2)}
+.seg{display:inline-flex}
+.seg button{border-radius:0;margin-left:-1px}
+.seg button:first-child{border-radius:999px 0 0 999px;margin-left:0}
+.seg button:last-child{border-radius:0 999px 999px 0}
+.seg button[aria-pressed="true"]{background:var(--surface2);border-color:var(--muted);position:relative;z-index:1}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.pri:hover{filter:brightness(1.08);background:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--muted);margin-bottom:10px;align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.lg-bar{width:26px;height:10px;border-radius:3px;background:var(--o-liam)}
+.lg-bar.late{outline:2px solid var(--warn);outline-offset:0}
+.lg-ms{width:11px;height:11px;transform:rotate(45deg);background:var(--accent);border-radius:2px}
+.lg-ln{width:20px;border-top:2px solid var(--dep)}
+.lg-ln.c{border-top:2px dashed var(--warn)}
+
+/* chart */
+.scroller{position:relative;overflow:auto;height:clamp(420px,calc(100dvh - 250px),1200px);border:1px solid var(--line);border-radius:10px;background:var(--surface);overscroll-behavior:contain}
+.sheet{position:relative;width:calc(var(--lw) + var(--W))}
+.head{display:flex;position:sticky;top:0;z-index:20;height:58px;width:calc(var(--lw) + var(--W));background:var(--surface);border-bottom:1px solid var(--line)}
+.corner{position:sticky;left:0;z-index:21;width:var(--lw);flex:none;background:var(--surface);border-right:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-between;padding:0 12px 8px 12px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.th{flex:none;width:var(--W);position:relative}
+.months{display:flex;height:24px;border-bottom:1px solid var(--line)}
+.mo{flex:none;padding:4px 0 0 8px;font-family:var(--display);letter-spacing:.09em;font-size:13px;text-transform:uppercase;color:var(--fg);border-left:1px solid var(--line);overflow:hidden;white-space:nowrap}
+.mo:first-child{border-left:0}
+.days{display:flex;height:34px}
+.dc{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--mono);line-height:1.15;border-left:1px solid var(--grid);color:var(--muted)}
+.dc b{font-weight:400;font-size:9px;color:var(--faint)}
+.dc span{font-size:11px;font-variant-numeric:tabular-nums}
+.dc.we{background:var(--wk)}
+.dc.rl{box-shadow:inset 0 -3px 0 var(--accent);color:var(--fg)}
+.dc.td{background:var(--today);color:#14110e}
+.dc.td b{color:#14110e}
+.body{position:relative;width:calc(var(--lw) + var(--W))}
+.row{display:flex;height:34px;width:calc(var(--lw) + var(--W))}
+.row.g{height:38px}
+.row .l{position:sticky;left:0;z-index:6;width:var(--lw);flex:none;background:var(--surface);border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 10px;cursor:pointer;min-width:0}
+.row.g .l{background:var(--surface2);gap:9px}
+.row .tr{flex:none;position:relative;width:var(--W);border-bottom:1px solid var(--line);
+  background-image:linear-gradient(to right,var(--wk) 0,var(--wk) var(--dw),transparent var(--dw),transparent calc(var(--dw) * 6),var(--wk) calc(var(--dw) * 6),var(--wk) calc(var(--dw) * 7)),linear-gradient(to right,transparent calc(var(--dw) - 1px),var(--grid) calc(var(--dw) - 1px));
+  background-size:calc(var(--dw) * 7) 100%,var(--dw) 100%;
+  background-position:calc(var(--wo) * var(--dw) * -1) 0,0 0;background-repeat:repeat-x}
+.row.g .tr{background-color:var(--surface2);background-image:none}
+.row:not(.g):hover .l,.row:not(.g):hover .tr{background-color:var(--hover)}
+.row:not(.g):hover .l{background-image:linear-gradient(var(--hover),var(--hover))}
+.row.sel .l{box-shadow:inset 3px 0 0 var(--today)}
+.nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px}
+.row.late .nm{color:var(--warn)}
+.row.dn .nm{text-decoration:line-through;color:var(--faint)}
+.own{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;color:var(--muted);flex:none;max-width:104px;white-space:nowrap;overflow:hidden}
+.own+.own{margin-left:-2px}
+.own span{overflow:hidden;text-overflow:ellipsis}
+.gn{font-family:var(--display);font-size:15px;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap}
+.gs{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+.gc{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.car{width:0;height:0;border-left:6px solid var(--muted);border-top:5px solid transparent;border-bottom:5px solid transparent;transition:transform .12s;flex:none}
+.car.o{transform:rotate(90deg)}
+.chk input{appearance:none;-webkit-appearance:none;width:16px;height:16px;border:1.5px solid var(--faint);border-radius:4px;margin:0;display:block;cursor:pointer;background:transparent;position:relative;flex:none}
+.chk input:checked{background:var(--o-justin);border-color:var(--o-justin)}
+.chk input:checked::after{content:"";position:absolute;left:4px;top:0;width:4px;height:9px;border:solid #14110e;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.bar{position:absolute;top:8px;height:18px;border-radius:5px;background:var(--c);cursor:grab;touch-action:pan-x pan-y}
+.bar.late{outline:2px solid var(--warn);outline-offset:0}
+.bar.dn{opacity:.38}
+.bar.drag{cursor:grabbing;box-shadow:0 0 0 2px var(--today)}
+.bar .h{position:absolute;top:0;bottom:0;width:7px;cursor:ew-resize}
+.bar .h.l{left:0}.bar .h.r{right:0}
+.ms{position:absolute;top:8px;width:18px;height:18px;cursor:grab}
+.ms::before{content:"";position:absolute;inset:2px;background:var(--c);transform:rotate(45deg);border-radius:3px}
+.ms.rel::before{background:var(--accent);inset:0;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 28%,transparent)}
+.ms.late::before{outline:2px solid var(--warn)}
+.ms.dn{opacity:.4}
+.lab{position:absolute;top:9px;font-family:var(--mono);font-size:11px;line-height:16px;color:var(--muted);white-space:nowrap;pointer-events:none}
+.lab.r{text-align:right}
+.lab.w{color:var(--warn)}
+.lab.rel{color:var(--fg);font-weight:500}
+.sum{position:absolute;top:16px;height:6px;border-radius:2px;background:var(--faint);opacity:.55}
+.ov{position:absolute;top:0;left:var(--lw);pointer-events:none;z-index:4;overflow:visible}
+.ov .dp{fill:none;stroke:var(--dep);stroke-width:1.3;opacity:.7}
+.ov .dp.c{stroke:var(--warn);stroke-dasharray:4 3;opacity:1}
+.ov .ar{fill:var(--dep);opacity:.8}
+.ov .ar.c{fill:var(--warn);opacity:1}
+.ov .rl{stroke:var(--accent);stroke-width:1;stroke-dasharray:3 4;opacity:.55}
+.ov .tdl{stroke:var(--today);stroke-width:1.5;opacity:.9}
+.empty{padding:36px 20px;color:var(--muted)}
+
+/* editor */
+.ed{position:fixed;right:0;top:0;bottom:0;width:min(380px,100%);z-index:40;background:var(--surface);border-left:1px solid var(--line);box-shadow:-12px 0 32px rgba(0,0,0,.28);display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.ed-h{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ed-t{font-family:var(--display);letter-spacing:.07em;text-transform:uppercase;font-size:17px}
+.ed-x{border:0;background:transparent;font-size:24px;line-height:1;padding:2px 8px;border-radius:6px;color:var(--muted)}
+.ed-x:hover{background:var(--surface2);color:var(--fg)}
+.ed-b{flex:1;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:13px}
+.ed label,.ed .fld>span{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--muted);font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase}
+.ed input[type=text],.ed input[type=date],.ed select,.ed textarea{background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-family:var(--body);font-size:14px;color:var(--fg);text-transform:none;letter-spacing:0;width:100%;min-width:0}
+.ed textarea{resize:vertical}
+.ed .two{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
+.ed .cl{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-family:var(--body);font-size:13.5px;color:var(--fg)}
+.ed .fld{display:flex;flex-direction:column;gap:6px}
+.ed .chips button{font-size:12.5px;padding:3px 10px;min-height:28px}
+.ed .chips button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.dpc{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 10px;font-size:12.5px;background:var(--bg);max-width:100%}
+.dpc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dpc button{border:0;background:transparent;color:var(--muted);padding:0 6px;font-size:15px;min-height:0}
+.ed-f{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+.ed-f .btn{border-radius:8px}
+.btn.danger{margin-left:auto;color:var(--warn);border-color:color-mix(in srgb,var(--warn) 50%,var(--line))}
+.btn.danger.arm{background:var(--warn);color:#14110e}
+.ed.ro input,.ed.ro select,.ed.ro textarea,.ed.ro .chips button,.ed.ro .ed-f .btn{pointer-events:none;opacity:.6}
+
+@media (max-width:700px){
+  :root{--lw:176px}
+  .own span{display:none}
+  .gs{display:none}
+  .row .l{padding:0 8px;gap:6px}
+  .nm{font-size:13px}
+  .corner span:last-child{display:none}
+  .ed{top:auto;width:100%;max-height:82dvh;border-left:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0;box-shadow:0 -12px 32px rgba(0,0,0,.35)}
+  .scroller{height:clamp(380px,calc(100dvh - 330px),1200px)}
+}
+@media (prefers-reduced-motion:reduce){.car{transition:none}}
+</style>
+
+<div class="top">
+  <div>
+    <h1>Release <em>Waterfall</em></h1>
+    <div class="sub">Nov 1 – Dec 31, 2026 · Prime → Dad Kicked Me Out → EP → Here We Go</div>
+  </div>
+  <div id="sync" data-s="init" role="status"><i></i><span>Loading…</span></div>
+</div>
+<p id="stats"></p>
+<div class="bar-tools">
+  <div class="chips" id="filters" role="group" aria-label="Filter by owner"></div>
+  <div class="seg" id="zoom" role="group" aria-label="Zoom">
+    <button type="button" data-z="22" aria-pressed="false">Compact</button>
+    <button type="button" data-z="32" aria-pressed="true">Normal</button>
+    <button type="button" data-z="46" aria-pressed="false">Wide</button>
+  </div>
+  <button type="button" class="btn" id="today">Jump to today</button>
+  <button type="button" class="btn" id="fold">Collapse all</button>
+  <button type="button" class="btn pri" id="add">Add task</button>
+  <button type="button" class="btn" id="exp">Backup</button>
+  <label class="btn" for="imp" style="cursor:pointer">Restore<input type="file" id="imp" accept="application/json,.json" hidden></label>
+</div>
+<div class="legend">
+  <span><i class="lg-bar"></i>Task</span>
+  <span><i class="lg-bar late"></i>Overdue</span>
+  <span><i class="lg-ms"></i>Milestone or release</span>
+  <span><i class="lg-ln"></i>Waits for</span>
+  <span><i class="lg-ln c"></i>Starts before its dependency ends</span>
+  <span>Drag a bar to move it, drag an edge to resize, click to edit.</span>
+</div>
+
+<div class="scroller" id="scroller"><div class="sheet" id="sheet"></div></div>
+
+<aside class="ed" id="ed" hidden aria-label="Edit task">
+  <div class="ed-h"><div class="ed-t">Edit task</div><button type="button" class="ed-x" id="ed-x" aria-label="Close">&times;</button></div>
+  <div class="ed-b">
+    <label for="f-n">Task<input type="text" id="f-n" autocomplete="off"></label>
+    <label for="f-g">Track<input type="text" id="f-g" list="glist" autocomplete="off"></label>
+    <datalist id="glist"></datalist>
+    <div class="fld"><span>Owner</span><div class="chips" id="f-o"></div></div>
+    <div class="two">
+      <label for="f-m">Type<select id="f-m"><option value="0">Task</option><option value="1">Milestone</option></select></label>
+      <label class="cl" for="f-k"><input type="checkbox" id="f-k"> Done</label>
+    </div>
+    <div class="two">
+      <label for="f-s">Start<input type="date" id="f-s"></label>
+      <label for="f-e" id="f-ew">End<input type="date" id="f-e"></label>
+    </div>
+    <div class="fld"><span>Waits for</span><div class="chips" id="f-d"></div><select id="f-da" aria-label="Add a dependency"></select></div>
+    <label for="f-x">Note<textarea id="f-x" rows="4"></textarea></label>
+  </div>
+  <div class="ed-f"><button type="button" class="btn" id="f-dup">Duplicate</button><button type="button" class="btn danger" id="f-del">Delete</button></div>
+</aside>
+
+<!-- Firebase (shared storage). Loaded from a CDN so the page stays fully static. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+var TASKS = [{"id":"k1","g":"Key dates","n":"Eamon cook session (1pm)","o":"Group","s":"2026-11-08","e":"2026-11-08","d":[],"m":1,"i":0,"x":"Everyone brings song references and why they like them.","k":1},{"id":"k2","g":"Key dates","n":"Creative meeting","o":"Group","s":"2026-11-09","e":"2026-11-09","d":[],"m":1,"i":0,"x":"Moved from Sat Nov 7. Your message said 1/9, charted as Nov 9 because the first release is Nov 20. Decide project name, logo, cover art, promo plan and who does what.","k":1},{"id":"k3","g":"Key dates","n":"RELEASE \u00b7 Prime (single)","o":"Group","s":"2026-11-20","e":"2026-11-20","d":["pr7"],"m":1,"i":0,"x":"First single, ahead of the EP.","k":0},{"id":"k4","g":"Key dates","n":"RELEASE \u00b7 Dad Kicked Me Out (single)","o":"Group","s":"2026-11-27","e":"2026-11-27","d":["d10"],"m":1,"i":0,"x":"","k":0},{"id":"k5","g":"Key dates","n":"RELEASE \u00b7 EP (core 5)","o":"Group","s":"2026-12-04","e":"2026-12-04","d":["e3"],"m":1,"i":0,"x":"Cyclops, Prime, Dad Kicked Me Out, Free Falling, What I Do.","k":0},{"id":"k6","g":"Key dates","n":"RELEASE \u00b7 Here We Go","o":"Group","s":"2026-12-25","e":"2026-12-25","d":["h7"],"m":1,"i":0,"x":"Christmas release. Exact day assumed to be Dec 25.","k":0},{"id":"a1","g":"Planning & admin","n":"Send Eamon song references + why","o":"Group","s":"2026-11-01","e":"2026-11-08","d":[],"m":0,"i":0,"x":"Core needs song references with details on why they like them.","k":1},{"id":"a2","g":"Planning & admin","n":"Central song list doc + song leads","o":"Jacob","s":"2026-11-01","e":"2026-11-09","d":[],"m":0,"i":0,"x":"Each song gets a lead; Jacob checks in with that person on what's left. Keep the [Untitled] app for the songs and add a doc everyone updates.","k":1},{"id":"a3a","g":"Planning & admin","n":"Collect promo videos you like + why + skit ideas","o":"Cheez","s":"2026-11-01","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"a3b","g":"Planning & admin","n":"Collect promo videos you like + why + skit ideas","o":"Jacob","s":"2026-11-01","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"a3c","g":"Planning & admin","n":"Collect promo videos you like + why + skit ideas","o":"Josh","s":"2026-11-01","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"a3d","g":"Planning & admin","n":"Collect promo videos you like + why + skit ideas","o":"Liam","s":"2026-11-01","e":"2026-11-16","d":[],"m":0,"i":0,"x":"Due tomorrow in To Do.","k":0},{"id":"a3e","g":"Planning & admin","n":"Collect promo videos you like + why + skit ideas","o":"Vrish","s":"2026-11-01","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"a4","g":"Planning & admin","n":"Bring core content buckets","o":"Justin","s":"2026-11-01","e":"2026-11-09","d":[],"m":0,"i":0,"x":"So promo is planned around these structures.","k":1},{"id":"a5","g":"Planning & admin","n":"Bring ideas: name, logo, cover art, promo","o":"Group","s":"2026-11-01","e":"2026-11-09","d":[],"m":0,"i":0,"x":"Ideas so far for the name: \"We Back\", something with a demos vibe.","k":1},{"id":"a6","g":"Planning & admin","n":"Solve crowdfunding for beats and other costs","o":"Cheez","s":"2026-11-01","e":"2026-11-16","d":[],"m":0,"i":0,"x":"Check notes. Beats for the core 5 total $275 (Prime 50, Cyclops 75, Dad 75, Free Falling 30, What I Do 45); Here We Go adds 45.","k":0},{"id":"a7","g":"Planning & admin","n":"Add Cheez to distro account + new DistroKid profile; compile process notes","o":"Jacob, Cheez","s":"2026-11-09","e":"2026-11-16","d":[],"m":0,"i":0,"x":"Must be done before the first upload on Nov 16.","k":0},{"id":"a8","g":"Planning & admin","n":"Explore waterfall chart for release times","o":"Jacob","s":"2026-11-08","e":"2026-11-16","d":[],"m":0,"i":0,"x":"This chart.","k":0},{"id":"a9","g":"Planning & admin","n":"Investigate automation in possible areas","o":"Jacob","s":"2026-11-08","e":"2026-11-22","d":[],"m":0,"i":0,"x":"","k":0},{"id":"a10","g":"Planning & admin","n":"Lock in widget to aid/gamify demo creation","o":"Vrish, Jacob","s":"2026-11-08","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"a11","g":"Planning & admin","n":"Weekly check-ins with song leads","o":"Jacob","s":"2026-11-10","e":"2026-12-04","d":[],"m":0,"i":0,"x":"Part of the better to-do system: Jacob checks with each lead on what a song still needs.","k":0},{"id":"b1","g":"Brand & creative","n":"Lock project name","o":"Group","s":"2026-11-09","e":"2026-11-09","d":["k2"],"m":1,"i":0,"x":"Ideas: \"We Back\", a demos vibe.","k":1},{"id":"b2","g":"Brand & creative","n":"Key and eye logo drafts (no bean bird)","o":"Jacob","s":"2026-11-01","e":"2026-11-09","d":[],"m":0,"i":0,"x":"Cartoonish key and eye. Make a base to pass to someone who can draw it well.","k":1},{"id":"b3","g":"Brand & creative","n":"Logo: hand base to illustrator, final art","o":"TBD","s":"2026-11-10","e":"2026-11-18","d":["b2","k2"],"m":0,"i":0,"x":"Illustrator to be chosen at the creative meeting.","k":0},{"id":"b5","g":"Brand & creative","n":"Prime cover art","o":"Justin","s":"2026-11-10","e":"2026-11-16","d":["k2"],"m":0,"i":0,"x":"Prime needs its own cover art.","k":0},{"id":"b6","g":"Brand & creative","n":"Dad Kicked Me Out cover art","o":"TBD","s":"2026-11-16","e":"2026-11-22","d":[],"m":0,"i":0,"x":"Every release needs art.","k":0},{"id":"b7","g":"Brand & creative","n":"EP cover art","o":"TBD","s":"2026-11-16","e":"2026-11-28","d":["b1"],"m":0,"i":0,"x":"To be assigned at the creative meeting.","k":0},{"id":"b8","g":"Brand & creative","n":"Here We Go cover art","o":"TBD","s":"2026-12-07","e":"2026-12-14","d":[],"m":0,"i":0,"x":"","k":0},{"id":"p1","g":"Promo & content","n":"Promo plan: who records, edits, plans; what; when","o":"Group","s":"2026-11-09","e":"2026-11-10","d":["k2","a4"],"m":0,"i":0,"x":"Built from Justin's content buckets and everyone's collected videos and skit ideas.","k":1},{"id":"p2","g":"Promo & content","n":"Shoot day 1: Prime promo + Prime video extension","o":"Group","s":"2026-11-14","e":"2026-11-14","d":["p1"],"m":0,"i":0,"x":"Day to shoot more media. Date decided at the creative meeting; Sat Nov 14 is a placeholder.","k":1},{"id":"p3","g":"Promo & content","n":"Edit Prime promo clips","o":"TBD","s":"2026-11-15","e":"2026-11-17","d":["p2"],"m":0,"i":0,"x":"","k":0},{"id":"p4","g":"Promo & content","n":"Prime teasers: schedule and post","o":"TBD","s":"2026-11-18","e":"2026-11-19","d":["p3"],"m":0,"i":0,"x":"","k":0},{"id":"p5","g":"Promo & content","n":"Prime release-week push","o":"TBD","s":"2026-11-20","e":"2026-11-26","d":["k3"],"m":0,"i":0,"x":"","k":0},{"id":"p6","g":"Promo & content","n":"Shoot day 2: Dad Kicked Me Out + EP media","o":"Group","s":"2026-11-21","e":"2026-11-21","d":["p1"],"m":0,"i":0,"x":"","k":0},{"id":"p7","g":"Promo & content","n":"Edit Dad Kicked Me Out promo","o":"TBD","s":"2026-11-22","e":"2026-11-24","d":["p6"],"m":0,"i":0,"x":"","k":0},{"id":"p8","g":"Promo & content","n":"Dad Kicked Me Out teasers: schedule and post","o":"TBD","s":"2026-11-25","e":"2026-11-26","d":["p7"],"m":0,"i":0,"x":"","k":0},{"id":"p9","g":"Promo & content","n":"Shoot day 3: EP promo","o":"Group","s":"2026-11-28","e":"2026-11-28","d":[],"m":0,"i":0,"x":"","k":0},{"id":"p10","g":"Promo & content","n":"Edit EP promo","o":"TBD","s":"2026-11-29","e":"2026-11-30","d":["p9"],"m":0,"i":0,"x":"","k":0},{"id":"p11","g":"Promo & content","n":"EP teasers and countdown","o":"TBD","s":"2026-12-01","e":"2026-12-03","d":["p10"],"m":0,"i":0,"x":"","k":0},{"id":"p12","g":"Promo & content","n":"Shoot: Here We Go promo","o":"Group","s":"2026-12-12","e":"2026-12-12","d":[],"m":0,"i":0,"x":"","k":0},{"id":"p13","g":"Promo & content","n":"Edit Here We Go promo","o":"TBD","s":"2026-12-13","e":"2026-12-17","d":["p12"],"m":0,"i":0,"x":"","k":0},{"id":"p14","g":"Promo & content","n":"Here We Go teasers: schedule and post","o":"TBD","s":"2026-12-18","e":"2026-12-24","d":["p13"],"m":0,"i":0,"x":"","k":0},{"id":"pr1","g":"Prime","n":"Buy beat ($50)","o":"Cheez","s":"2026-11-01","e":"2026-11-03","d":[],"m":0,"i":0,"x":"Due Tue Nov 3 and still open in To Do. Buy this one first: it is the first release and blocks all Prime work.","k":1},{"id":"pr2","g":"Prime","n":"Write second verse","o":"Cheez","s":"2026-11-09","e":"2026-11-11","d":[],"m":0,"i":0,"x":"","k":1},{"id":"pr3","g":"Prime","n":"Record second verse","o":"Cheez","s":"2026-11-11","e":"2026-11-12","d":["pr1","pr2"],"m":0,"i":0,"x":"","k":1},{"id":"pr4","g":"Prime","n":"Re-record last section","o":"Josh","s":"2026-11-09","e":"2026-11-16","d":["pr1"],"m":0,"i":0,"x":"","k":0},{"id":"pr5","g":"Prime","n":"Mix: levels, more reverb on Cheez's vocal","o":"Vrish","s":"2026-11-13","e":"2026-11-16","d":["pr3","pr4"],"m":0,"i":0,"x":"Eamon's note: Cheez could have more reverb on his parts. Vrish mixes, Liam masters.","k":0},{"id":"pr6","g":"Prime","n":"Master","o":"Liam","s":"2026-11-15","e":"2026-11-16","d":["pr5"],"m":0,"i":0,"x":"","k":0},{"id":"pr7","g":"Prime","n":"Upload to distributor","o":"Jacob","s":"2026-11-16","e":"2026-11-16","d":["pr6","b5","a7"],"m":0,"i":0,"x":"Four days before release. Earlier is safer.","k":0},{"id":"d1","g":"Dad Kicked Me Out","n":"Check if the feature wants to rap on it","o":"Liam","s":"2026-11-01","e":"2026-11-02","d":[],"m":0,"i":0,"x":"Notes said Liam checks within 2 days. Confirm the answer.","k":1},{"id":"d2","g":"Dad Kicked Me Out","n":"Buy beat ($75)","o":"Cheez","s":"2026-11-09","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"d3","g":"Dad Kicked Me Out","n":"Get recording of his dad","o":"Cheez","s":"2026-11-09","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"d4","g":"Dad Kicked Me Out","n":"Record verse and send to Cheez","o":"Justin","s":"2026-11-10","e":"2026-11-17","d":["d2"],"m":0,"i":0,"x":"","k":0},{"id":"d5","g":"Dad Kicked Me Out","n":"Record verse and send to Cheez","o":"Josh","s":"2026-11-10","e":"2026-11-17","d":["d2"],"m":0,"i":0,"x":"","k":0},{"id":"d6","g":"Dad Kicked Me Out","n":"Feature verse (if yes)","o":"TBD","s":"2026-11-10","e":"2026-11-17","d":["d1","d2"],"m":0,"i":0,"x":"","k":0},{"id":"d7","g":"Dad Kicked Me Out","n":"Put verses in Logic","o":"Cheez","s":"2026-11-17","e":"2026-11-19","d":["d3","d4","d5"],"m":0,"i":0,"x":"","k":0},{"id":"d8","g":"Dad Kicked Me Out","n":"Adjust levels","o":"Cheez","s":"2026-11-20","e":"2026-11-21","d":["d7"],"m":0,"i":0,"x":"","k":0},{"id":"d9","g":"Dad Kicked Me Out","n":"Master","o":"Liam","s":"2026-11-22","e":"2026-11-23","d":["d8"],"m":0,"i":0,"x":"Once the levels are adjusted.","k":0},{"id":"d10","g":"Dad Kicked Me Out","n":"Upload to distributor","o":"Jacob","s":"2026-11-23","e":"2026-11-23","d":["d9","b6"],"m":0,"i":0,"x":"Four days before release.","k":0},{"id":"f1","g":"Free Falling","n":"Buy beat ($30)","o":"Cheez","s":"2026-11-11","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"f2","g":"Free Falling","n":"Add ad-libs to choruses","o":"Vrish","s":"2026-11-16","e":"2026-11-18","d":["f1"],"m":0,"i":0,"x":"","k":0},{"id":"f3","g":"Free Falling","n":"Adjust levels / mix (especially Cheez)","o":"Vrish","s":"2026-11-19","e":"2026-11-22","d":["f2"],"m":0,"i":0,"x":"","k":0},{"id":"f4","g":"Free Falling","n":"Master","o":"Liam","s":"2026-11-24","e":"2026-11-25","d":["f3"],"m":0,"i":0,"x":"Once Vrish sends it over.","k":0},{"id":"c1","g":"Cyclops","n":"Buy beat ($75)","o":"Cheez","s":"2026-11-12","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"c2","g":"Cyclops","n":"Write his words","o":"Cheez","s":"2026-11-13","e":"2026-11-20","d":["c1"],"m":0,"i":0,"x":"Cheez needs words.","k":0},{"id":"c3","g":"Cyclops","n":"Record","o":"Cheez","s":"2026-11-21","e":"2026-11-22","d":["c2"],"m":0,"i":0,"x":"","k":0},{"id":"c4","g":"Cyclops","n":"Mix","o":"Vrish","s":"2026-11-23","e":"2026-11-25","d":["c3"],"m":0,"i":0,"x":"","k":0},{"id":"c5","g":"Cyclops","n":"Master","o":"Liam","s":"2026-11-26","e":"2026-11-27","d":["c4"],"m":0,"i":0,"x":"After Vrish mixes.","k":0},{"id":"w1","g":"What I Do","n":"Buy beat ($45)","o":"Cheez","s":"2026-11-13","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"w2","g":"What I Do","n":"Write second verse","o":"Cheez","s":"2026-11-14","e":"2026-11-20","d":["w1"],"m":0,"i":0,"x":"","k":0},{"id":"w3","g":"What I Do","n":"Write second verse","o":"Josh","s":"2026-11-14","e":"2026-11-20","d":["w1"],"m":0,"i":0,"x":"","k":0},{"id":"w4","g":"What I Do","n":"Write verse","o":"Justin","s":"2026-11-14","e":"2026-11-20","d":["w1"],"m":0,"i":0,"x":"All 3 write.","k":0},{"id":"w5","g":"What I Do","n":"Record all verses","o":"Cheez, Josh, Justin","s":"2026-11-21","e":"2026-11-24","d":["w2","w3","w4"],"m":0,"i":0,"x":"","k":0},{"id":"w6","g":"What I Do","n":"Mix","o":"Vrish","s":"2026-11-25","e":"2026-11-27","d":["w5"],"m":0,"i":0,"x":"","k":0},{"id":"w7","g":"What I Do","n":"Master","o":"Liam","s":"2026-11-28","e":"2026-11-29","d":["w6"],"m":0,"i":0,"x":"","k":0},{"id":"e1","g":"EP drop","n":"Sequence the tracklist","o":"Jacob","s":"2026-11-24","e":"2026-11-28","d":[],"m":0,"i":0,"x":"Free Falling goes second-to-last, then something higher energy to finish.","k":0},{"id":"e2","g":"EP drop","n":"Final listen of all 5 masters","o":"Group","s":"2026-11-29","e":"2026-11-30","d":["w7","c5","f4","d9"],"m":0,"i":0,"x":"","k":0},{"id":"e3","g":"EP drop","n":"Upload EP to distributor","o":"Jacob","s":"2026-11-30","e":"2026-11-30","d":["e2","e1","b7"],"m":0,"i":0,"x":"Four days before release.","k":0},{"id":"h1","g":"Here We Go","n":"Buy beat ($45)","o":"Cheez","s":"2026-12-07","e":"2026-12-07","d":[],"m":0,"i":0,"x":"Lower priority. Buy after the core 5.","k":0},{"id":"h2","g":"Here We Go","n":"Decide whether to add a verse","o":"Jacob","s":"2026-11-09","e":"2026-11-20","d":[],"m":0,"i":0,"x":"","k":0},{"id":"h3","g":"Here We Go","n":"Line up extra rappers","o":"Group","s":"2026-12-05","e":"2026-12-11","d":[],"m":0,"i":0,"x":"Notes: could have another person rap on it; add more people.","k":0},{"id":"h4","g":"Here We Go","n":"Write and record verses","o":"Group","s":"2026-12-11","e":"2026-12-15","d":["h1","h2","h3"],"m":0,"i":0,"x":"","k":0},{"id":"h5","g":"Here We Go","n":"Mix","o":"Vrish","s":"2026-12-16","e":"2026-12-17","d":["h4"],"m":0,"i":0,"x":"","k":0},{"id":"h6","g":"Here We Go","n":"Master","o":"Liam","s":"2026-12-18","e":"2026-12-19","d":["h5"],"m":0,"i":0,"x":"","k":0},{"id":"h7","g":"Here We Go","n":"Upload to distributor","o":"Jacob","s":"2026-12-19","e":"2026-12-19","d":["h6","b8"],"m":0,"i":0,"x":"Six days before Christmas.","k":0},{"id":"o1","g":"Aftermath & We Up","n":"Aftermath: adjust levels","o":"Justin","s":"2026-11-15","e":"2026-11-18","d":[],"m":0,"i":0,"x":"No release slot yet; dates are placeholders.","k":0},{"id":"o2","g":"Aftermath & We Up","n":"We Up: send verse","o":"Cheez","s":"2026-11-12","e":"2026-11-16","d":[],"m":0,"i":0,"x":"Josh's levels task waits on Aman's verse.","k":0},{"id":"o3","g":"Aftermath & We Up","n":"We Up: adjust levels","o":"Josh","s":"2026-11-17","e":"2026-11-19","d":["o2"],"m":0,"i":0,"x":"Once Aman sends the verse. No release slot yet.","k":0},{"id":"o4","g":"Aftermath & We Up","n":"We Up: master","o":"Liam","s":"2026-11-20","e":"2026-11-21","d":["o3"],"m":0,"i":0,"x":"","k":0},{"id":"r1","g":"Road trip","n":"Line up road-trip and EP idea","o":"Group","s":"2026-12-07","e":"2026-12-31","d":["k5"],"m":0,"i":0,"x":"Road trip project is the last thing. Conceptual (Cheez had academic terms for it); possibly recorded in the car.","k":0},{"id":"n_mb1","g":"Planning & admin","n":"Run MB to find ranked YouTube songs for Kyoudai remix","o":"Jacob","s":"2026-11-16","e":"2026-11-16","d":[],"m":0,"i":0,"x":"","k":0},{"id":"n_shoot1","g":"Promo & content","n":"Find a day everyone can pull up and shoot all day","o":"Group","s":"2026-11-16","e":"2026-11-16","d":[],"m":0,"i":0,"x":"Lock one full shoot day before the per-release promo shoots can be scheduled.","k":0}];
+var OWNERS=['Cheez','Jacob','Josh','Justin','Liam','Vrish','Group','TBD'];
+var MNS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var MNL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+var WDS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+var GSUB={'Prime':'Single · Nov 20','Dad Kicked Me Out':'Single · Nov 27','EP drop':'Dec 4','Here We Go':'Christmas'};
+var PIN='Key dates', RH=34, GH=38, DAY=864e5, BASE=Date.UTC(2026,10,1), LS='release-waterfall-v1';
+var $=function(s){return document.querySelector(s)};
+var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+var clone=function(o){return JSON.parse(JSON.stringify(o))};
+var tasks=clone(TASKS), dw=32, rs=0, n=61, filter=null, collapsed={}, canWrite=true, editing=null, drag=null, justDragged=false;
+var docRef=null, saveTimer=null, saving=false, dirty=false, lastSaved='', allFolded=false;
+var sheet=$('#sheet'), scroller=$('#scroller');
+
+function di(s){var p=s.split('-').map(Number);return Math.round((Date.UTC(p[0],p[1]-1,p[2])-BASE)/DAY)}
+function ds(i){return new Date(BASE+i*DAY).toISOString().slice(0,10)}
+var now=new Date(), todayIdx=Math.round((Date.UTC(now.getFullYear(),now.getMonth(),now.getDate())-BASE)/DAY);
+function fmt(i){var d=new Date(BASE+i*DAY);return MNS[d.getUTCMonth()]+' '+d.getUTCDate()}
+function fmtW(i){return WDS[new Date(BASE+i*DAY).getUTCDay()]+' '+fmt(i)}
+function fmtR(a,b){if(a===b)return fmt(a);var x=new Date(BASE+a*DAY),y=new Date(BASE+b*DAY);return x.getUTCMonth()===y.getUTCMonth()?fmt(a)+'–'+y.getUTCDate():fmt(a)+'–'+fmt(b)}
+function owners(t){return String(t.o||'').split(',').map(function(s){return s.trim()}).filter(Boolean)}
+function oname(o){for(var i=0;i<OWNERS.length;i++)if(OWNERS[i].toLowerCase()===String(o).toLowerCase())return OWNERS[i];return 'TBD'}
+function oc(o){return 'var(--o-'+oname(o).toLowerCase()+')'}
+function byId(id){for(var i=0;i<tasks.length;i++)if(tasks[i].id===id)return tasks[i];return null}
+function late(t){return !t.k && di(t.e)<todayIdx}
+function isRel(t){return t.m&&/^RELEASE/.test(t.n)}
+function uid(){return 't'+Date.now().toString(36)+Math.floor(Math.random()*1e3).toString(36)}
+
+function bounds(){
+  var lo=0,hi=60;
+  tasks.forEach(function(t){lo=Math.min(lo,di(t.s));hi=Math.max(hi,di(t.e))});
+  rs=lo; n=hi-lo+1;
+}
+
+function render(){
+  bounds();
+  var W=n*dw, wo=new Date(BASE+rs*DAY).getUTCDay();
+  sheet.style.setProperty('--W',W+'px');sheet.style.setProperty('--dw',dw+'px');sheet.style.setProperty('--wo',wo);
+  var rel={};tasks.forEach(function(t){if(isRel(t))rel[di(t.s)]=1});
+  var mo='',days='',i=0;
+  while(i<n){
+    var d0=new Date(BASE+(rs+i)*DAY),m=d0.getUTCMonth(),j=i;
+    while(j<n&&new Date(BASE+(rs+j)*DAY).getUTCMonth()===m)j++;
+    mo+='<div class="mo" style="width:'+(j-i)*dw+'px">'+MNL[m]+' '+d0.getUTCFullYear()+'</div>';i=j;
+  }
+  for(i=0;i<n;i++){
+    var a=rs+i,d=new Date(BASE+a*DAY),wd=d.getUTCDay();
+    days+='<div class="dc'+(wd===0||wd===6?' we':'')+(a===todayIdx?' td':'')+(rel[a]?' rl':'')+'" style="width:'+dw+'px"><b>'+'SMTWTFS'.charAt(wd)+'</b><span>'+d.getUTCDate()+'</span></div>';
+  }
+  var head='<div class="head"><div class="corner"><span>Task</span><span>Owner</span></div><div class="th"><div class="months">'+mo+'</div><div class="days">'+days+'</div></div></div>';
+
+  var gOrder=[];tasks.forEach(function(t){if(gOrder.indexOf(t.g)<0)gOrder.push(t.g)});
+  var y=0,rows='',pos={},rel2=[];
+  gOrder.forEach(function(g){
+    var all=tasks.filter(function(t){return t.g===g});
+    var vis=all.filter(function(t){return !filter||g===PIN||owners(t).indexOf(filter)>=0});
+    if(!vis.length)return;
+    var order={};all.forEach(function(t,k){order[t.id]=k});
+    vis.sort(function(a,b){return di(a.s)-di(b.s)||di(a.e)-di(b.e)||order[a.id]-order[b.id]});
+    var done=all.filter(function(t){return t.k}).length;
+    var mn=Math.min.apply(null,all.map(function(t){return di(t.s)})),mx=Math.max.apply(null,all.map(function(t){return di(t.e)}));
+    var open=!collapsed[g];
+    rows+='<div class="row g" data-g="'+esc(g)+'"><div class="l" data-g="'+esc(g)+'" role="button" tabindex="0" aria-expanded="'+open+'"><i class="car'+(open?' o':'')+'"></i><span class="gn">'+esc(g)+'</span>'+(GSUB[g]?'<span class="gs">'+esc(GSUB[g])+'</span>':'')+'<span class="gc">'+done+'/'+all.length+'</span></div><div class="tr"><div class="sum" style="left:'+((mn-rs)*dw+2)+'px;width:'+Math.max(6,(mx-mn+1)*dw-4)+'px"></div></div></div>';
+    y+=GH;
+    if(!open)return;
+    vis.forEach(function(t){
+      var s=di(t.s),e=t.m?s:di(t.e),col=oc(owners(t)[0]),ow=owners(t),lt=late(t);
+      var ob=ow.map(function(o){return '<span class="own" style="--c:'+oc(o)+'"><i></i><span>'+esc(oname(o))+'</span></span>'}).join('');
+      var cls=(lt?' late':'')+(t.k?' dn':'');
+      var left='<div class="l" data-id="'+t.id+'"><label class="chk" title="Mark done"><input type="checkbox" data-done="'+t.id+'"'+(t.k?' checked':'')+' aria-label="Done: '+esc(t.n)+'"></label><span class="nm" title="'+esc(t.n)+'">'+esc(t.n)+'</span>'+ob+'</div>';
+      var tr,x1,x2,yc=y+RH/2;
+      if(t.m){
+        var cx=(s-rs+.5)*dw;x1=cx-9;x2=cx+9;
+        var lab=fmtW(s)+(lt?' · overdue':'');
+        var onRight=cx+9+170<W;
+        tr='<div class="ms'+(isRel(t)?' rel':'')+cls+'" data-id="'+t.id+'" tabindex="0" role="button" aria-label="'+esc(t.n+', '+fmtW(s))+'" style="left:'+(cx-9)+'px;--c:'+col+'"></div>'+
+           '<span class="lab'+(lt?' w':'')+(isRel(t)?' rel':'')+(onRight?'':' r')+'" style="'+(onRight?'left:'+(cx+16)+'px':'right:'+(W-cx+16)+'px')+'">'+esc(lab)+'</span>';
+        if(isRel(t))rel2.push(cx);
+      }else{
+        x1=(s-rs)*dw+1;var w=(e-s+1)*dw-2;x2=x1+w;
+        var lab2=fmtR(s,e)+(lt?' · overdue':'');
+        var right=x2+8+150<W;
+        tr='<div class="bar'+cls+'" data-id="'+t.id+'" tabindex="0" role="button" aria-label="'+esc(t.n+', '+fmtR(s,e))+'" style="left:'+x1+'px;width:'+w+'px;--c:'+col+'"><i class="h l"></i><i class="h r"></i></div>'+
+           '<span class="lab'+(lt?' w':'')+(right?'':' r')+'" style="'+(right?'left:'+(x2+8)+'px':'right:'+(W-x1+8)+'px')+'">'+esc(lab2)+'</span>';
+      }
+      rows+='<div class="row'+cls+(editing===t.id?' sel':'')+'" data-id="'+t.id+'">'+left+'<div class="tr">'+tr+'</div></div>';
+      pos[t.id]={x1:x1,x2:x2,y:yc,t:t};
+      y+=RH;
+    });
+  });
+  if(!rows)rows='<div class="empty">Nothing matches this filter.</div>';
+
+  var paths='',conf=0;
+  Object.keys(pos).forEach(function(id){
+    var b=pos[id];
+    (b.t.d||[]).forEach(function(did){
+      var a=pos[did];if(!a)return;
+      var x1=a.x2,y1=a.y,x2=b.x1,y2=b.y,bad=di(b.t.s)<di(a.t.e),p;
+      if(x2-x1>=10)p='M'+x1+' '+y1+'H'+(x1+6)+'V'+y2+'H'+x2;
+      else if(x2-x1>=0)p='M'+x1+' '+y1+'V'+y2+'H'+x2;
+      else{var ym=(y1+y2)/2;p='M'+x1+' '+y1+'H'+(x1+6)+'V'+ym+'H'+(x2-8)+'V'+y2+'H'+x2}
+      paths+='<path class="dp'+(bad?' c':'')+'" d="'+p+'"/><path class="ar'+(bad?' c':'')+'" d="M'+x2+' '+y2+'l-5 -3.5v7z"/>';
+    });
+  });
+  var lines='';
+  rel2.forEach(function(cx){lines+='<line class="rl" x1="'+cx+'" x2="'+cx+'" y1="0" y2="'+y+'"/>'});
+  if(todayIdx>=rs&&todayIdx<rs+n){var tx=(todayIdx-rs+.5)*dw;lines+='<line class="tdl" x1="'+tx+'" x2="'+tx+'" y1="0" y2="'+y+'"/>'}
+  var ov='<svg class="ov" width="'+W+'" height="'+Math.max(y,1)+'" aria-hidden="true">'+lines+paths+'</svg>';
+  sheet.innerHTML=head+'<div class="body">'+rows+ov+'</div>';
+  renderFilters();renderStats();
+}
+
+function renderFilters(){
+  var h='<button type="button" class="fchip" data-o="" aria-pressed="'+(!filter)+'">Everyone</button>';
+  OWNERS.forEach(function(o){h+='<button type="button" class="fchip" data-o="'+o+'" aria-pressed="'+(filter===o)+'" style="--c:'+oc(o)+'"><i></i>'+o+'</button>'});
+  $('#filters').innerHTML=h;
+}
+function renderStats(){
+  var open=tasks.filter(function(t){return !t.k}).length,lt=tasks.filter(late).length,conf=0;
+  tasks.forEach(function(t){(t.d||[]).forEach(function(d){var a=byId(d);if(a&&di(t.s)<di(a.e))conf++})});
+  var nxt=null;tasks.forEach(function(t){if(isRel(t)&&di(t.s)>=todayIdx&&(!nxt||di(t.s)<di(nxt.s)))nxt=t});
+  var s='';
+  if(nxt){var dd=di(nxt.s)-todayIdx;s+='Next drop: <b>'+esc(nxt.n.replace(/^RELEASE · /,''))+'</b> '+(dd===0?'today':dd===1?'tomorrow':'in <b>'+dd+'</b> days')+' ('+fmtW(di(nxt.s))+'). '}
+  s+='<b>'+open+'</b> of <b>'+tasks.length+'</b> items open. ';
+  s+=lt?'<span class="bad"><b>'+lt+'</b> overdue.</span> ':'Nothing overdue. ';
+  s+=conf?'<span class="bad"><b>'+conf+'</b> '+(conf===1?'task starts':'tasks start')+' before a dependency ends.</span>':'No dependency conflicts.';
+  $('#stats').innerHTML=s;
+}
+
+/* sync */
+var SYNC={init:'Loading…',shared:'Shared · edits save for everyone with access',saving:'Saving…',saved:'Saved for everyone with access',local:'Edits stay in this browser only',readonly:'View only: you can look but not change this chart',slow:'Shared copy not reachable yet'};
+function setSync(k){var el=$('#sync');el.setAttribute('data-s',k);el.lastChild.textContent=SYNC[k]||k}
+function persist(){
+  try{localStorage.setItem(LS,JSON.stringify(tasks))}catch(e){}
+  if(!docRef)return;
+  dirty=true;setSync('saving');clearTimeout(saveTimer);saveTimer=setTimeout(flush,600);
+}
+function flush(){
+  if(saving){saveTimer=setTimeout(flush,300);return}
+  saving=true;var snap=JSON.stringify(tasks);
+  docRef.set({tasks:JSON.parse(snap),v:1,updatedAt:new Date().toISOString()}).then(function(){
+    lastSaved=snap;saving=false;
+    if(JSON.stringify(tasks)!==snap){flush();return}
+    dirty=false;setSync('saved');
+  },function(err){
+    saving=false;dirty=false;
+    if(err&&(err.code==='permission-denied'||err.code==='invalid_argument'||err.code==='revoked')){canWrite=false;setSync('readonly');applyRO()}
+    else setSync('slow');
+  });
+}
+function applyRO(){$('#ed').classList.toggle('ro',!canWrite)}
+function commit(){render();persist()}
+
+/* editor */
+function openEd(id){
+  var t=byId(id);if(!t)return;editing=id;
+  var ed=$('#ed');ed.hidden=false;applyRO();fillEd(t);
+  var prev=sheet.querySelector('.row.sel');if(prev)prev.classList.remove('sel');
+  var r=sheet.querySelector('.row[data-id="'+id+'"]');if(r)r.classList.add('sel');
+}
+function closeEd(){editing=null;$('#ed').hidden=true;var p=sheet.querySelector('.row.sel');if(p)p.classList.remove('sel')}
+function fillEd(t){
+  $('#f-n').value=t.n;$('#f-g').value=t.g;$('#f-m').value=t.m?'1':'0';$('#f-k').checked=!!t.k;
+  $('#f-s').value=t.s;$('#f-e').value=t.e;$('#f-ew').style.display=t.m?'none':'';$('#f-x').value=t.x||'';
+  var gs=[];tasks.forEach(function(x){if(gs.indexOf(x.g)<0)gs.push(x.g)});
+  $('#glist').innerHTML=gs.map(function(g){return '<option value="'+esc(g)+'">'}).join('');
+  var ow=owners(t);
+  $('#f-o').innerHTML=OWNERS.map(function(o){return '<button type="button" class="fchip" data-eo="'+o+'" aria-pressed="'+(ow.indexOf(o)>=0)+'" style="--c:'+oc(o)+'"><i></i>'+o+'</button>'}).join('');
+  $('#f-d').innerHTML=(t.d||[]).map(function(d){var a=byId(d);return a?'<span class="dpc"><span>'+esc(a.n)+'</span><button type="button" data-rd="'+d+'" aria-label="Remove dependency">&times;</button></span>':''}).join('')||'<span style="font-size:12.5px;color:var(--faint)">Nothing. This can start any time.</span>';
+  var h='<option value="">Add a task this waits for…</option>',cur=null;
+  tasks.forEach(function(x){
+    if(x.id===t.id||(t.d||[]).indexOf(x.id)>=0)return;
+    if(x.g!==cur){if(cur!==null)h+='</optgroup>';h+='<optgroup label="'+esc(x.g)+'">';cur=x.g}
+    h+='<option value="'+x.id+'">'+esc(x.n)+' ('+fmt(di(x.s))+')</option>';
+  });
+  if(cur!==null)h+='</optgroup>';$('#f-da').innerHTML=h;
+}
+function edit(fn,full){var t=byId(editing);if(!t||!canWrite)return;fn(t);commit();if(full)fillEd(t)}
+$('#ed-x').onclick=closeEd;
+$('#f-n').addEventListener('input',function(e){edit(function(t){t.n=e.target.value||'Untitled'})});
+$('#f-g').addEventListener('change',function(e){edit(function(t){t.g=e.target.value.trim()||'Planning & admin'},true)});
+$('#f-x').addEventListener('input',function(e){edit(function(t){t.x=e.target.value})});
+$('#f-k').addEventListener('change',function(e){edit(function(t){t.k=e.target.checked?1:0})});
+$('#f-m').addEventListener('change',function(e){edit(function(t){t.m=+e.target.value;if(t.m)t.e=t.s},true)});
+$('#f-s').addEventListener('change',function(e){if(!e.target.value)return;edit(function(t){t.s=e.target.value;if(t.m||di(t.e)<di(t.s))t.e=t.s},true)});
+$('#f-e').addEventListener('change',function(e){if(!e.target.value)return;edit(function(t){t.e=e.target.value;if(di(t.e)<di(t.s))t.s=t.e},true)});
+$('#f-o').addEventListener('click',function(e){var b=e.target.closest('[data-eo]');if(!b)return;
+  edit(function(t){var o=b.getAttribute('data-eo'),ow=owners(t),k=ow.indexOf(o);if(k>=0){if(ow.length>1)ow.splice(k,1)}else ow.push(o);
+    t.o=OWNERS.filter(function(x){return ow.indexOf(x)>=0}).join(', ')},true)});
+$('#f-d').addEventListener('click',function(e){var b=e.target.closest('[data-rd]');if(!b)return;
+  edit(function(t){t.d=(t.d||[]).filter(function(x){return x!==b.getAttribute('data-rd')})},true)});
+$('#f-da').addEventListener('change',function(e){var v=e.target.value;if(!v)return;edit(function(t){t.d=(t.d||[]).concat([v])},true)});
+$('#f-dup').onclick=function(){if(!canWrite)return;var t=byId(editing);if(!t)return;var c=clone(t);c.id=uid();c.n=t.n+' (copy)';c.d=(t.d||[]).slice();c.k=0;tasks.splice(tasks.indexOf(t)+1,0,c);commit();openEd(c.id)};
+var armT=null;
+$('#f-del').onclick=function(){
+  if(!canWrite)return;var b=$('#f-del');
+  if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='Click again to delete';clearTimeout(armT);armT=setTimeout(function(){b.classList.remove('arm');b.textContent='Delete'},3000);return}
+  var id=editing;tasks=tasks.filter(function(t){return t.id!==id});tasks.forEach(function(t){t.d=(t.d||[]).filter(function(x){return x!==id})});
+  b.classList.remove('arm');b.textContent='Delete';closeEd();commit();
+};
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&editing)closeEd()});
+
+/* chart interaction */
+sheet.addEventListener('click',function(e){
+  if(justDragged)return;
+  var ck=e.target.closest('.chk');
+  if(ck){var inp=ck.querySelector('input');if(e.target===inp&&canWrite){var t=byId(inp.getAttribute('data-done'));if(t){t.k=inp.checked?1:0;commit();if(editing===t.id)fillEd(t)}}else if(!canWrite){e.preventDefault()}return}
+  var g=e.target.closest('.l[data-g]');
+  if(g){var k=g.getAttribute('data-g');collapsed[k]=!collapsed[k];render();return}
+  var el=e.target.closest('[data-id]');if(el)openEd(el.getAttribute('data-id'));
+});
+sheet.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'&&e.key!==' ')return;
+  var g=e.target.closest('.l[data-g]');if(g){e.preventDefault();var k=g.getAttribute('data-g');collapsed[k]=!collapsed[k];render();return}
+  var el=e.target.closest('.bar,.ms');if(el){e.preventDefault();openEd(el.getAttribute('data-id'))}
+});
+sheet.addEventListener('pointerdown',function(e){
+  var bar=e.target.closest('.bar,.ms');
+  if(!bar||e.button!==0||e.pointerType==='touch'||!canWrite)return;
+  var t=byId(bar.getAttribute('data-id'));if(!t)return;
+  var mode=e.target.classList.contains('h')?(e.target.classList.contains('l')?'l':'r'):'move';
+  if(t.m)mode='move';
+  drag={id:t.id,mode:mode,x0:e.clientX,s0:di(t.s),e0:di(t.e),moved:false,bar:bar,ms:!!t.m,ns:di(t.s),ne:di(t.e),pid:e.pointerId};
+  try{bar.setPointerCapture(e.pointerId)}catch(x){}
+});
+sheet.addEventListener('pointermove',function(e){
+  if(!drag||e.pointerId!==drag.pid)return;
+  var dx=e.clientX-drag.x0;if(Math.abs(dx)>3)drag.moved=true;if(!drag.moved)return;
+  var dd=Math.round(dx/dw),s=drag.s0,en=drag.e0;
+  if(drag.mode==='move'){s+=dd;en+=dd}else if(drag.mode==='l'){s=Math.min(s+dd,en)}else{en=Math.max(en+dd,s)}
+  drag.ns=s;drag.ne=en;drag.bar.classList.add('drag');
+  if(drag.ms)drag.bar.style.left=((s-rs+.5)*dw-9)+'px';
+  else{drag.bar.style.left=((s-rs)*dw+1)+'px';drag.bar.style.width=((en-s+1)*dw-2)+'px'}
+});
+function endDrag(e){
+  if(!drag||e.pointerId!==drag.pid)return;
+  var d=drag;drag=null;
+  if(!d.moved)return;
+  justDragged=true;setTimeout(function(){justDragged=false},0);
+  var t=byId(d.id);if(!t)return;
+  var ns=ds(d.ns),ne=d.ms?ns:ds(d.ne);
+  if(ns!==t.s||ne!==t.e){t.s=ns;t.e=ne;commit();if(editing===t.id)fillEd(t)}else render();
+}
+sheet.addEventListener('pointerup',endDrag);
+sheet.addEventListener('pointercancel',function(e){if(drag&&e.pointerId===drag.pid){drag=null;render()}});
+
+/* toolbar */
+$('#filters').addEventListener('click',function(e){var b=e.target.closest('[data-o]');if(!b)return;filter=b.getAttribute('data-o')||null;render()});
+$('#zoom').addEventListener('click',function(e){
+  var b=e.target.closest('[data-z]');if(!b)return;
+  var nz=+b.getAttribute('data-z'),old=dw;if(nz===old)return;
+  var cx=scroller.scrollLeft;dw=nz;
+  Array.prototype.forEach.call($('#zoom').children,function(x){x.setAttribute('aria-pressed',x===b)});
+  render();scroller.scrollLeft=cx*nz/old;
+});
+function toToday(){scroller.scrollLeft=Math.max(0,(todayIdx-rs-2)*dw)}
+$('#today').onclick=toToday;
+$('#fold').onclick=function(){
+  allFolded=!allFolded;tasks.forEach(function(t){collapsed[t.g]=allFolded});
+  $('#fold').textContent=allFolded?'Expand all':'Collapse all';render();
+};
+$('#add').onclick=function(){
+  if(!canWrite)return;
+  var t={id:uid(),g:'Planning & admin',n:'New task',o:'TBD',s:ds(Math.max(todayIdx,0)),e:ds(Math.max(todayIdx,0)+2),d:[],m:0,i:0,x:'',k:0};
+  tasks.push(t);collapsed[t.g]=false;filter=null;commit();openEd(t.id);
+  var r=sheet.querySelector('.row[data-id="'+t.id+'"]');if(r)r.scrollIntoView({block:'center'});
+  $('#f-n').focus();$('#f-n').select();
+};
+
+/* backup / restore — a safety net against bad edits or a leaked link */
+$('#exp').onclick=function(){
+  var blob=new Blob([JSON.stringify(tasks,null,2)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='release-waterfall-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+};
+$('#imp').onchange=function(e){
+  var f=e.target.files&&e.target.files[0];if(!f){return}
+  if(!canWrite){alert('This chart is view-only right now, so it can’t be restored here.');e.target.value='';return}
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var p=JSON.parse(r.result);
+      if(!Array.isArray(p)||!p.length){alert('That file doesn’t look like a schedule backup.');return}
+      if(!confirm('Replace the whole schedule with this backup? This changes it for everyone with the link.')){return}
+      tasks=p;closeEd();commit();
+    }catch(x){alert('Could not read that file — is it a .json backup?')}
+  };
+  r.readAsText(f);e.target.value='';
+};
+
+/* start */
+render();toToday();
+/* ========================================================================
+   SHARED STORAGE (Firebase Firestore)
+   Paste your Firebase web-app config between the braces below, then save.
+   Until you do, the chart still works but only saves in THIS browser.
+   See SETUP guide, Step 2, for exactly where these six values come from.
+   ======================================================================== */
+var firebaseConfig = {
+  apiKey: "AIzaSyDs3n86niWkxTRyF1Kb7Mr24Y1a7nnFb0E",
+  authDomain: "kyoudaiwaterfall.firebaseapp.com",
+  projectId: "kyoudaiwaterfall",
+  storageBucket: "kyoudaiwaterfall.firebasestorage.app",
+  messagingSenderId: "777490117522",
+  appId: "1:777490117522:web:fa2809bff38e6e41d9874b"
+};
+var DOC_PATH='charts/waterfall'; /* the single document that holds the whole plan */
+
+(function(){
+  var ready=window.firebase&&firebaseConfig.apiKey&&firebaseConfig.apiKey.indexOf('PASTE')<0;
+  if(!ready){useLocal();return}
+  try{
+    firebase.initializeApp(firebaseConfig);
+    docRef=firebase.firestore().doc(DOC_PATH);
+  }catch(e){useLocal();return}
+  var seeded=false,slow=setTimeout(function(){setSync('slow')},10000);
+  docRef.onSnapshot(function(snap){
+    clearTimeout(slow);
+    if(snap.exists){
+      var d=snap.data();
+      if(d&&Array.isArray(d.tasks)){
+        var j=JSON.stringify(d.tasks);
+        if(j!==lastSaved&&!dirty&&!saving){
+          tasks=clone(d.tasks);lastSaved=j;render();
+          if(editing){if(byId(editing))fillEd(byId(editing));else closeEd()}
+        }
+      }
+    }else if(canWrite&&!seeded&&!dirty&&!saving){
+      /* first-ever load: write the built-in schedule so the team starts from it */
+      seeded=true;persist();
+    }
+    if(!dirty&&!saving&&canWrite)setSync('shared');
+  },function(err){
+    clearTimeout(slow);
+    if(err&&err.code==='permission-denied'){canWrite=false;setSync('readonly');applyRO()}
+    else setSync('slow');
+  });
+})();
+function useLocal(){
+  try{var s=localStorage.getItem(LS);if(s){var p=JSON.parse(s);if(Array.isArray(p)&&p.length){tasks=p;render()}}}catch(e){}
+  setSync('local');
+}
+})();
+</script>
+
+</body>
+</html>
