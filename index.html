@@ -107,9 +107,15 @@ h1 em{font-style:normal;color:var(--accent)}
   background-size:calc(var(--dw) * 7) 100%,var(--dw) 100%;
   background-position:calc(var(--wo) * var(--dw) * -1) 0,0 0;background-repeat:repeat-x}
 .row.g .tr{background-color:var(--surface2);background-image:none}
-.row:not(.g):hover .l,.row:not(.g):hover .tr{background-color:var(--hover)}
+.row:not(.g):hover .tr{background-color:var(--hover)}
 .row:not(.g):hover .l{background-image:linear-gradient(var(--hover),var(--hover))}
 .row.sel .l{box-shadow:inset 3px 0 0 var(--today)}
+.ed.multi .single{display:none}
+.ed:not(.multi) .multi-only{display:none}
+.ed.multi .multi-only{display:flex}
+.shiftrow{display:flex;gap:6px;flex-wrap:wrap;width:100%}
+.shiftrow .btn{border-radius:8px;flex:1;justify-content:center;min-width:52px}
+@media (min-width:701px){.scroller.ed-open .sheet{width:calc(var(--lw) + var(--W) + 392px)}}
 .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px}
 .row.late .nm{color:var(--warn)}
 .row.dn .nm{text-decoration:line-through;color:var(--faint)}
@@ -122,7 +128,7 @@ h1 em{font-style:normal;color:var(--accent)}
 .car{width:0;height:0;border-left:6px solid var(--muted);border-top:5px solid transparent;border-bottom:5px solid transparent;transition:transform .12s;flex:none}
 .car.o{transform:rotate(90deg)}
 .chk input{appearance:none;-webkit-appearance:none;width:16px;height:16px;border:1.5px solid var(--faint);border-radius:4px;margin:0;display:block;cursor:pointer;background:transparent;position:relative;flex:none}
-.chk input:checked{background:var(--o-justin);border-color:var(--o-justin)}
+.chk input:checked{background:var(--today);border-color:var(--today)}
 .chk input:checked::after{content:"";position:absolute;left:4px;top:0;width:4px;height:9px;border:solid #14110e;border-width:0 2px 2px 0;transform:rotate(45deg)}
 .bar{position:absolute;top:8px;height:18px;border-radius:5px;background:var(--c);cursor:grab;touch-action:pan-x pan-y}
 .bar.late{outline:2px solid var(--warn);outline-offset:0}
@@ -219,18 +225,18 @@ h1 em{font-style:normal;color:var(--accent)}
   <span><i class="lg-ms"></i>Milestone or release</span>
   <span><i class="lg-ln"></i>Waits for</span>
   <span><i class="lg-ln c"></i>Starts before its dependency ends</span>
-  <span>Drag a bar to move it, drag an edge to resize, click to edit.</span>
+  <span>Drag to move, drag an edge to resize, click to edit. Tick boxes to select several and bulk-edit toggles or shift dates; copy/paste with Ctrl/Cmd-C/V.</span>
 </div>
 
 <div class="scroller" id="scroller"><div class="sheet" id="sheet"></div></div>
 
 <aside class="ed" id="ed" hidden aria-label="Edit task">
-  <div class="ed-h"><div class="ed-t">Edit task</div><button type="button" class="ed-x" id="ed-x" aria-label="Close">&times;</button></div>
+  <div class="ed-h"><div class="ed-t" id="ed-t">Edit task</div><button type="button" class="ed-x" id="ed-x" aria-label="Close">&times;</button></div>
   <div class="ed-b">
-    <label for="f-n">Task<input type="text" id="f-n" autocomplete="off"></label>
-    <label for="f-g">Track<input type="text" id="f-g" list="glist" autocomplete="off"></label>
+    <label class="single" for="f-n">Task<input type="text" id="f-n" autocomplete="off"></label>
+    <label class="single" for="f-g">Track<input type="text" id="f-g" list="glist" autocomplete="off"></label>
     <datalist id="glist"></datalist>
-    <div class="fld"><span>Owner</span><div class="chips" id="f-o"></div></div>
+    <div class="fld single"><span>Owner</span><div class="chips" id="f-o"></div></div>
     <div class="two">
       <label for="f-m">Type<select id="f-m"><option value="0">Task</option><option value="1">Milestone</option></select></label>
       <label class="cl" for="f-k"><input type="checkbox" id="f-k"> Done</label>
@@ -239,14 +245,15 @@ h1 em{font-style:normal;color:var(--accent)}
       <label class="cl" for="f-u"><input type="checkbox" id="f-u"> No due date</label>
       <label class="cl" for="f-bb"><input type="checkbox" id="f-bb"> Backburner</label>
     </div>
-    <div class="two" id="f-dates">
+    <div class="two single" id="f-dates">
       <label for="f-s">Start<input type="date" id="f-s"></label>
       <label for="f-e" id="f-ew">End<input type="date" id="f-e"></label>
     </div>
-    <div class="fld"><span>Waits for</span><div class="chips" id="f-d"></div><select id="f-da" aria-label="Add a dependency"></select></div>
-    <label for="f-x">Note<textarea id="f-x" rows="4"></textarea></label>
+    <div class="fld multi-only" id="f-shift"><span>Shift all dates</span><div class="shiftrow"><button type="button" class="btn" data-sh="-7">&minus; wk</button><button type="button" class="btn" data-sh="-1">&minus; day</button><button type="button" class="btn" data-sh="1">+ day</button><button type="button" class="btn" data-sh="7">+ wk</button></div></div>
+    <div class="fld single"><span>Waits for</span><div class="chips" id="f-d"></div><select id="f-da" aria-label="Add a dependency"></select></div>
+    <label class="single" for="f-x">Note<textarea id="f-x" rows="4"></textarea></label>
   </div>
-  <div class="ed-f"><button type="button" class="btn" id="f-dup">Duplicate</button><button type="button" class="btn danger" id="f-del">Delete</button></div>
+  <div class="ed-f"><button type="button" class="btn single" id="f-dup">Duplicate</button><button type="button" class="btn danger" id="f-del">Delete</button></div>
 </aside>
 
 <!-- Firebase (shared storage). Loaded from a CDN so the page stays fully static. -->
@@ -264,7 +271,7 @@ var PIN='Key dates', RH=34, GH=38, DAY=864e5, BASE=Date.UTC(2026,10,1), LS='rele
 var $=function(s){return document.querySelector(s)};
 var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
 var clone=function(o){return JSON.parse(JSON.stringify(o))};
-var tasks=clone(TASKS), dw=32, rs=0, n=61, filter=null, collapsed={}, canWrite=true, editing=null, drag=null, justDragged=false;
+var tasks=clone(TASKS), dw=32, rs=0, n=61, filter=null, collapsed={}, canWrite=true, sel=[], clip=[], drag=null, justDragged=false;
 var docRef=null, saveTimer=null, saving=false, dirty=false, lastSaved='', allFolded=false;
 var sheet=$('#sheet'), scroller=$('#scroller');
 
@@ -325,9 +332,9 @@ function render(){
       var s=di(t.s),e=t.m?s:di(t.e),col=oc(owners(t)[0]),ow=owners(t),lt=late(t);
       var ob=ow.map(function(o){return '<span class="own" style="--c:'+oc(o)+'"><i></i><span>'+esc(oname(o))+'</span></span>'}).join('');
       var cls=(lt?' late':'')+(t.k?' dn':'');
-      var left='<div class="l" data-id="'+t.id+'"><label class="chk" title="Mark done"><input type="checkbox" data-done="'+t.id+'"'+(t.k?' checked':'')+' aria-label="Done: '+esc(t.n)+'"></label><span class="nm" title="'+esc(t.n)+'">'+esc(t.n)+'</span>'+ob+'</div>';
+      var left='<div class="l" data-id="'+t.id+'"><label class="chk" title="Select"><input type="checkbox" data-done="'+t.id+'"'+(sel.indexOf(t.id)>=0?' checked':'')+' aria-label="Select: '+esc(t.n)+'"></label><span class="nm" title="'+esc(t.n)+'">'+esc(t.n)+'</span>'+ob+'</div>';
       if(t.u){
-        rows+='<div class="row'+cls+(editing===t.id?' sel':'')+'" data-id="'+t.id+'">'+left+'<div class="tr"><div class="npill'+(t.k?' dn':'')+'" data-id="'+t.id+'" tabindex="0" role="button" aria-label="'+esc(t.n+' · no due date')+'" style="--c:'+col+'">no date</div></div></div>';
+        rows+='<div class="row'+cls+(sel.indexOf(t.id)>=0?' sel':'')+'" data-id="'+t.id+'">'+left+'<div class="tr"><div class="npill'+(t.k?' dn':'')+'" data-id="'+t.id+'" tabindex="0" role="button" aria-label="'+esc(t.n+' · no due date')+'" style="--c:'+col+'">no date</div></div></div>';
         y+=RH;return;
       }
       var tr,x1,x2,yc=y+RH/2;
@@ -345,7 +352,7 @@ function render(){
         tr='<div class="bar'+cls+'" data-id="'+t.id+'" tabindex="0" role="button" aria-label="'+esc(t.n+', '+fmtR(s,e))+'" style="left:'+x1+'px;width:'+w+'px;--c:'+col+'"><i class="h l"></i><i class="h r"></i></div>'+
            '<span class="lab'+(lt?' w':'')+(right?'':' r')+'" style="'+(right?'left:'+(x2+8)+'px':'right:'+(W-x1+8)+'px')+'">'+esc(lab2)+'</span>';
       }
-      rows+='<div class="row'+cls+(editing===t.id?' sel':'')+'" data-id="'+t.id+'">'+left+'<div class="tr">'+tr+'</div></div>';
+      rows+='<div class="row'+cls+(sel.indexOf(t.id)>=0?' sel':'')+'" data-id="'+t.id+'">'+left+'<div class="tr">'+tr+'</div></div>';
       pos[t.id]={x1:x1,x2:x2,y:yc,t:t};
       y+=RH;
     });
@@ -360,8 +367,8 @@ function render(){
       backVis.forEach(function(t){
         var col=oc(owners(t)[0]),ow=owners(t);
         var ob=ow.map(function(o){return '<span class="own" style="--c:'+oc(o)+'"><i></i><span>'+esc(oname(o))+'</span></span>'}).join('');
-        var left='<div class="l" data-id="'+t.id+'"><label class="chk" title="Mark done"><input type="checkbox" data-done="'+t.id+'"'+(t.k?' checked':'')+' aria-label="Done: '+esc(t.n)+'"></label><span class="nm" title="'+esc(t.n)+'">'+esc(t.n)+'</span>'+ob+'<span class="trk">'+esc(t.g)+'</span></div>';
-        rows+='<div class="row'+(t.k?' dn':'')+(editing===t.id?' sel':'')+'" data-id="'+t.id+'">'+left+'<div class="tr"><div class="npill'+(t.k?' dn':'')+'" data-id="'+t.id+'" tabindex="0" role="button" aria-label="'+esc(t.n+' · backburner')+'" style="--c:'+col+'">backburner</div></div></div>';
+        var left='<div class="l" data-id="'+t.id+'"><label class="chk" title="Select"><input type="checkbox" data-done="'+t.id+'"'+(sel.indexOf(t.id)>=0?' checked':'')+' aria-label="Select: '+esc(t.n)+'"></label><span class="nm" title="'+esc(t.n)+'">'+esc(t.n)+'</span>'+ob+'<span class="trk">'+esc(t.g)+'</span></div>';
+        rows+='<div class="row'+(t.k?' dn':'')+(sel.indexOf(t.id)>=0?' sel':'')+'" data-id="'+t.id+'">'+left+'<div class="tr"><div class="npill'+(t.k?' dn':'')+'" data-id="'+t.id+'" tabindex="0" role="button" aria-label="'+esc(t.n+' · backburner')+'" style="--c:'+col+'">backburner</div></div></div>';
         y+=RH;
       });
     }
@@ -432,70 +439,92 @@ function applyRO(){$('#ed').classList.toggle('ro',!canWrite)}
 function commit(){render();persist()}
 
 /* editor */
-function openEd(id){
-  var t=byId(id);if(!t)return;editing=id;
-  var ed=$('#ed');ed.hidden=false;applyRO();fillEd(t);
-  var prev=sheet.querySelector('.row.sel');if(prev)prev.classList.remove('sel');
-  var r=sheet.querySelector('.row[data-id="'+id+'"]');if(r)r.classList.add('sel');
+function selTasks(){var r=[];sel.forEach(function(id){var t=byId(id);if(t)r.push(t)});return r}
+function applySel(){
+  sel=sel.filter(function(id){return byId(id)});
+  var ed=$('#ed');
+  if(sel.length){ed.hidden=false;applyRO();scroller.classList.add('ed-open')}
+  else{ed.hidden=true;scroller.classList.remove('ed-open')}
+  render();
+  if(sel.length)fillEd();
 }
-function closeEd(){editing=null;$('#ed').hidden=true;var p=sheet.querySelector('.row.sel');if(p)p.classList.remove('sel')}
-function fillEd(t){
-  $('#f-n').value=t.n;$('#f-g').value=t.g;$('#f-m').value=t.m?'1':'0';$('#f-k').checked=!!t.k;
-  $('#f-s').value=t.s;$('#f-e').value=t.e;$('#f-ew').style.display=t.m?'none':'';$('#f-x').value=t.x||'';
-  $('#f-u').checked=!!t.u;$('#f-bb').checked=!!t.bb;$('#f-dates').style.display=t.u?'none':'';
-  var gs=[];tasks.forEach(function(x){if(gs.indexOf(x.g)<0)gs.push(x.g)});
-  $('#glist').innerHTML=gs.map(function(g){return '<option value="'+esc(g)+'">'}).join('');
-  var ow=owners(t);
-  $('#f-o').innerHTML=OWNERS.map(function(o){return '<button type="button" class="fchip" data-eo="'+o+'" aria-pressed="'+(ow.indexOf(o)>=0)+'" style="--c:'+oc(o)+'"><i></i>'+o+'</button>'}).join('');
-  $('#f-d').innerHTML=(t.d||[]).map(function(d){var a=byId(d);return a?'<span class="dpc"><span>'+esc(a.n)+'</span><button type="button" data-rd="'+d+'" aria-label="Remove dependency">&times;</button></span>':''}).join('')||'<span style="font-size:12.5px;color:var(--faint)">Nothing. This can start any time.</span>';
-  var h='<option value="">Add a task this waits for…</option>',cur=null;
-  tasks.forEach(function(x){
-    if(x.id===t.id||(t.d||[]).indexOf(x.id)>=0)return;
-    if(x.g!==cur){if(cur!==null)h+='</optgroup>';h+='<optgroup label="'+esc(x.g)+'">';cur=x.g}
-    h+='<option value="'+x.id+'">'+esc(x.n)+' ('+fmt(di(x.s))+')</option>';
-  });
-  if(cur!==null)h+='</optgroup>';$('#f-da').innerHTML=h;
+function selectOnly(id){sel=[id];applySel()}
+function toggleSel(id){var i=sel.indexOf(id);if(i>=0)sel.splice(i,1);else sel.push(id);applySel()}
+function closeEd(){sel=[];applySel()}
+function setTri(cb,ts,key){var all=ts.every(function(t){return !!t[key]}),none=ts.every(function(t){return !t[key]});cb.indeterminate=!(all||none);cb.checked=all}
+function fillEd(){
+  var ts=selTasks();if(!ts.length){closeEd();return}
+  var t=ts[0],multi=ts.length>1,ed=$('#ed');
+  ed.classList.toggle('multi',multi);
+  $('#ed-t').textContent=multi?(ts.length+' tasks selected'):'Edit task';
+  $('#f-n').value=t.n;$('#f-g').value=t.g;$('#f-x').value=t.x||'';
+  $('#f-s').value=t.s;$('#f-e').value=t.e;$('#f-ew').style.display=t.m?'none':'';$('#f-dates').style.display=t.u?'none':'';
+  setTri($('#f-k'),ts,'k');setTri($('#f-u'),ts,'u');setTri($('#f-bb'),ts,'bb');
+  var types=ts.map(function(x){return x.m?'1':'0'}),same=types.every(function(v){return v===types[0]}),mix=$('#f-m').querySelector('option[value="_"]');
+  if(same){if(mix)mix.remove();$('#f-m').value=types[0]}
+  else{if(!mix){mix=document.createElement('option');mix.value='_';mix.textContent='(mixed)';$('#f-m').appendChild(mix)}$('#f-m').value='_'}
+  if(!multi){
+    var gs=[];tasks.forEach(function(x){if(gs.indexOf(x.g)<0)gs.push(x.g)});
+    $('#glist').innerHTML=gs.map(function(g){return '<option value="'+esc(g)+'">'}).join('');
+    var ow=owners(t);
+    $('#f-o').innerHTML=OWNERS.map(function(o){return '<button type="button" class="fchip" data-eo="'+o+'" aria-pressed="'+(ow.indexOf(o)>=0)+'" style="--c:'+oc(o)+'"><i></i>'+o+'</button>'}).join('');
+    $('#f-d').innerHTML=(t.d||[]).map(function(d){var a=byId(d);return a?'<span class="dpc"><span>'+esc(a.n)+'</span><button type="button" data-rd="'+d+'" aria-label="Remove dependency">&times;</button></span>':''}).join('')||'<span style="font-size:12.5px;color:var(--faint)">Nothing. This can start any time.</span>';
+    var h='<option value="">Add a task this waits for…</option>',cur=null;
+    tasks.forEach(function(x){if(x.id===t.id||(t.d||[]).indexOf(x.id)>=0)return;if(x.g!==cur){if(cur!==null)h+='</optgroup>';h+='<optgroup label="'+esc(x.g)+'">';cur=x.g}h+='<option value="'+x.id+'">'+esc(x.n)+' ('+fmt(di(x.s))+')</option>'});
+    if(cur!==null)h+='</optgroup>';$('#f-da').innerHTML=h;
+  }
+  var b=$('#f-del');b.classList.remove('arm');b.textContent=multi?('Delete '+ts.length):'Delete';
 }
-function edit(fn,full){var t=byId(editing);if(!t||!canWrite)return;fn(t);commit();if(full)fillEd(t)}
+function edit(fn,full){if(sel.length!==1)return;var t=byId(sel[0]);if(!t||!canWrite)return;fn(t);commit();if(full)fillEd()}
+function editAll(fn){if(!canWrite||!sel.length)return;selTasks().forEach(fn);commit();fillEd()}
 $('#ed-x').onclick=closeEd;
 $('#f-n').addEventListener('input',function(e){edit(function(t){t.n=e.target.value||'Untitled'})});
 $('#f-g').addEventListener('change',function(e){edit(function(t){t.g=e.target.value.trim()||'Planning & admin'},true)});
 $('#f-x').addEventListener('input',function(e){edit(function(t){t.x=e.target.value})});
-$('#f-k').addEventListener('change',function(e){edit(function(t){t.k=e.target.checked?1:0})});
-$('#f-m').addEventListener('change',function(e){edit(function(t){t.m=+e.target.value;if(t.m)t.e=t.s},true)});
-$('#f-u').addEventListener('change',function(e){edit(function(t){t.u=e.target.checked?1:0;if(!t.u&&!t.s){t.s=ds(Math.max(todayIdx,0));t.e=ds(Math.max(todayIdx,0)+2)}},true)});
-$('#f-bb').addEventListener('change',function(e){edit(function(t){t.bb=e.target.checked?1:0;if(t.bb)t.u=1},true)});
+$('#f-k').addEventListener('change',function(e){var v=e.target.checked?1:0;editAll(function(t){t.k=v})});
+$('#f-m').addEventListener('change',function(e){if(e.target.value==='_')return;var v=+e.target.value;editAll(function(t){t.m=v;if(t.m)t.e=t.s})});
+$('#f-u').addEventListener('change',function(e){var v=e.target.checked?1:0;editAll(function(t){t.u=v;if(!t.u&&!t.s){t.s=ds(Math.max(todayIdx,0));t.e=ds(Math.max(todayIdx,0)+2)}})});
+$('#f-bb').addEventListener('change',function(e){var v=e.target.checked?1:0;editAll(function(t){t.bb=v;if(t.bb)t.u=1})});
 $('#f-s').addEventListener('change',function(e){if(!e.target.value)return;edit(function(t){t.s=e.target.value;if(t.m||di(t.e)<di(t.s))t.e=t.s},true)});
 $('#f-e').addEventListener('change',function(e){if(!e.target.value)return;edit(function(t){t.e=e.target.value;if(di(t.e)<di(t.s))t.s=t.e},true)});
+$('#f-shift').addEventListener('click',function(e){var b=e.target.closest('[data-sh]');if(!b)return;var dd=+b.getAttribute('data-sh');editAll(function(t){if(t.u||t.bb)return;t.s=ds(di(t.s)+dd);t.e=ds(di(t.e)+dd)})});
 $('#f-o').addEventListener('click',function(e){var b=e.target.closest('[data-eo]');if(!b)return;
   edit(function(t){var o=b.getAttribute('data-eo'),ow=owners(t),k=ow.indexOf(o);if(k>=0){if(ow.length>1)ow.splice(k,1)}else ow.push(o);
     t.o=OWNERS.filter(function(x){return ow.indexOf(x)>=0}).join(', ')},true)});
 $('#f-d').addEventListener('click',function(e){var b=e.target.closest('[data-rd]');if(!b)return;
   edit(function(t){t.d=(t.d||[]).filter(function(x){return x!==b.getAttribute('data-rd')})},true)});
 $('#f-da').addEventListener('change',function(e){var v=e.target.value;if(!v)return;edit(function(t){t.d=(t.d||[]).concat([v])},true)});
-$('#f-dup').onclick=function(){if(!canWrite)return;var t=byId(editing);if(!t)return;var c=clone(t);c.id=uid();c.n=t.n+' (copy)';c.d=(t.d||[]).slice();c.k=0;tasks.splice(tasks.indexOf(t)+1,0,c);commit();openEd(c.id)};
+$('#f-dup').onclick=function(){if(!canWrite||sel.length!==1)return;var t=byId(sel[0]);if(!t)return;var c=clone(t);c.id=uid();c.n=t.n+' (copy)';c.d=(t.d||[]).slice();c.k=0;tasks.splice(tasks.indexOf(t)+1,0,c);commit();selectOnly(c.id)};
 var armT=null;
 $('#f-del').onclick=function(){
-  if(!canWrite)return;var b=$('#f-del');
-  if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='Click again to delete';clearTimeout(armT);armT=setTimeout(function(){b.classList.remove('arm');b.textContent='Delete'},3000);return}
-  var id=editing;tasks=tasks.filter(function(t){return t.id!==id});tasks.forEach(function(t){t.d=(t.d||[]).filter(function(x){return x!==id})});
+  if(!canWrite||!sel.length)return;var b=$('#f-del');
+  if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='Click again to delete';clearTimeout(armT);armT=setTimeout(function(){b.classList.remove('arm');b.textContent=sel.length>1?'Delete '+sel.length:'Delete'},3000);return}
+  var ids=sel.slice();tasks=tasks.filter(function(t){return ids.indexOf(t.id)<0});tasks.forEach(function(t){t.d=(t.d||[]).filter(function(x){return ids.indexOf(x)<0})});
   b.classList.remove('arm');b.textContent='Delete';closeEd();commit();
 };
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&editing)closeEd()});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&sel.length)closeEd()});
+document.addEventListener('keydown',function(e){
+  var ae=e.target,tg=ae&&ae.tagName;
+  if(tg==='TEXTAREA'||tg==='SELECT'||(tg==='INPUT'&&ae.type!=='checkbox'&&ae.type!=='radio'))return;
+  if(!(e.ctrlKey||e.metaKey))return;
+  var k=(e.key||'').toLowerCase();
+  if(k==='c'){if(sel.length)clip=selTasks().map(clone)}
+  else if(k==='v'){if(!canWrite||!clip.length)return;e.preventDefault();var ids=[];clip.forEach(function(src){var c=clone(src);c.id=uid();c.d=(src.d||[]).slice();ids.push(c.id);tasks.push(c)});sel=ids;applySel();persist()}
+});
 
 /* chart interaction */
 sheet.addEventListener('click',function(e){
   if(justDragged)return;
   var ck=e.target.closest('.chk');
-  if(ck){var inp=ck.querySelector('input');if(e.target===inp&&canWrite){var t=byId(inp.getAttribute('data-done'));if(t){t.k=inp.checked?1:0;commit();if(editing===t.id)fillEd(t)}}else if(!canWrite){e.preventDefault()}return}
+  if(ck){e.preventDefault();if(!canWrite)return;var id=ck.querySelector('input').getAttribute('data-done');if(id)toggleSel(id);return}
   var g=e.target.closest('.l[data-g]');
   if(g){var k=g.getAttribute('data-g');collapsed[k]=!collapsed[k];render();return}
-  var el=e.target.closest('[data-id]');if(el)openEd(el.getAttribute('data-id'));
+  var el=e.target.closest('[data-id]');if(el)selectOnly(el.getAttribute('data-id'));
 });
 sheet.addEventListener('keydown',function(e){
   if(e.key!=='Enter'&&e.key!==' ')return;
   var g=e.target.closest('.l[data-g]');if(g){e.preventDefault();var k=g.getAttribute('data-g');collapsed[k]=!collapsed[k];render();return}
-  var el=e.target.closest('.bar,.ms,.npill');if(el){e.preventDefault();openEd(el.getAttribute('data-id'))}
+  var el=e.target.closest('.bar,.ms,.npill');if(el){e.preventDefault();selectOnly(el.getAttribute('data-id'))}
 });
 sheet.addEventListener('pointerdown',function(e){
   var bar=e.target.closest('.bar,.ms');
@@ -522,7 +551,7 @@ function endDrag(e){
   justDragged=true;setTimeout(function(){justDragged=false},0);
   var t=byId(d.id);if(!t)return;
   var ns=ds(d.ns),ne=d.ms?ns:ds(d.ne);
-  if(ns!==t.s||ne!==t.e){t.s=ns;t.e=ne;commit();if(editing===t.id)fillEd(t)}else render();
+  if(ns!==t.s||ne!==t.e){t.s=ns;t.e=ne;commit();if(sel.indexOf(t.id)>=0)fillEd()}else render();
 }
 sheet.addEventListener('pointerup',endDrag);
 sheet.addEventListener('pointercancel',function(e){if(drag&&e.pointerId===drag.pid){drag=null;render()}});
@@ -545,7 +574,7 @@ $('#fold').onclick=function(){
 $('#add').onclick=function(){
   if(!canWrite)return;
   var t={id:uid(),g:'Planning & admin',n:'New task',o:'TBD',s:ds(Math.max(todayIdx,0)),e:ds(Math.max(todayIdx,0)+2),d:[],m:0,i:0,x:'',k:0};
-  tasks.push(t);collapsed[t.g]=false;filter=null;commit();openEd(t.id);
+  tasks.push(t);collapsed[t.g]=false;filter=null;commit();selectOnly(t.id);
   var r=sheet.querySelector('.row[data-id="'+t.id+'"]');if(r)r.scrollIntoView({block:'center'});
   $('#f-n').focus();$('#f-n').select();
 };
@@ -607,7 +636,7 @@ var DOC_PATH='charts/waterfall'; /* the single document that holds the whole pla
         var j=JSON.stringify(d.tasks);
         if(j!==lastSaved&&!dirty&&!saving){
           tasks=clone(d.tasks);lastSaved=j;render();
-          if(editing){if(byId(editing))fillEd(byId(editing));else closeEd()}
+          if(sel.length){sel=sel.filter(function(id){return byId(id)});if(sel.length)fillEd();else closeEd()}
         }
       }
     }else if(canWrite&&!seeded&&!dirty&&!saving){
