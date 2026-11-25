@@ -110,6 +110,8 @@ h1 em{font-style:normal;color:var(--accent)}
 .row:not(.g):hover .tr{background-color:var(--hover)}
 .row:not(.g):hover .l{background-image:linear-gradient(var(--hover),var(--hover))}
 .row.sel .l{box-shadow:inset 3px 0 0 var(--today)}
+.row.g.drop .l{background:var(--surface2);box-shadow:inset 0 0 0 2px var(--today)}
+.l[draggable="true"]{cursor:grab}
 .ed.multi .single{display:none}
 .ed:not(.multi) .multi-only{display:none}
 .ed.multi .multi-only{display:flex}
@@ -332,7 +334,7 @@ function render(){
       var s=di(t.s),e=t.m?s:di(t.e),col=oc(owners(t)[0]),ow=owners(t),lt=late(t);
       var ob=ow.map(function(o){return '<span class="own" style="--c:'+oc(o)+'"><i></i><span>'+esc(oname(o))+'</span></span>'}).join('');
       var cls=(lt?' late':'')+(t.k?' dn':'');
-      var left='<div class="l" data-id="'+t.id+'"><label class="chk" title="Select"><input type="checkbox" data-done="'+t.id+'"'+(sel.indexOf(t.id)>=0?' checked':'')+' aria-label="Select: '+esc(t.n)+'"></label><span class="nm" title="'+esc(t.n)+'">'+esc(t.n)+'</span>'+ob+'</div>';
+      var left='<div class="l" draggable="true" data-id="'+t.id+'"><label class="chk" title="Select"><input type="checkbox" data-done="'+t.id+'"'+(sel.indexOf(t.id)>=0?' checked':'')+' aria-label="Select: '+esc(t.n)+'"></label><span class="nm" title="'+esc(t.n)+'">'+esc(t.n)+'</span>'+ob+'</div>';
       if(t.u){
         rows+='<div class="row'+cls+(sel.indexOf(t.id)>=0?' sel':'')+'" data-id="'+t.id+'">'+left+'<div class="tr"><div class="npill'+(t.k?' dn':'')+'" data-id="'+t.id+'" tabindex="0" role="button" aria-label="'+esc(t.n+' · no due date')+'" style="--c:'+col+'">no date</div></div></div>';
         y+=RH;return;
@@ -367,7 +369,7 @@ function render(){
       backVis.forEach(function(t){
         var col=oc(owners(t)[0]),ow=owners(t);
         var ob=ow.map(function(o){return '<span class="own" style="--c:'+oc(o)+'"><i></i><span>'+esc(oname(o))+'</span></span>'}).join('');
-        var left='<div class="l" data-id="'+t.id+'"><label class="chk" title="Select"><input type="checkbox" data-done="'+t.id+'"'+(sel.indexOf(t.id)>=0?' checked':'')+' aria-label="Select: '+esc(t.n)+'"></label><span class="nm" title="'+esc(t.n)+'">'+esc(t.n)+'</span>'+ob+'<span class="trk">'+esc(t.g)+'</span></div>';
+        var left='<div class="l" draggable="true" data-id="'+t.id+'"><label class="chk" title="Select"><input type="checkbox" data-done="'+t.id+'"'+(sel.indexOf(t.id)>=0?' checked':'')+' aria-label="Select: '+esc(t.n)+'"></label><span class="nm" title="'+esc(t.n)+'">'+esc(t.n)+'</span>'+ob+'<span class="trk">'+esc(t.g)+'</span></div>';
         rows+='<div class="row'+(t.k?' dn':'')+(sel.indexOf(t.id)>=0?' sel':'')+'" data-id="'+t.id+'">'+left+'<div class="tr"><div class="npill'+(t.k?' dn':'')+'" data-id="'+t.id+'" tabindex="0" role="button" aria-label="'+esc(t.n+' · backburner')+'" style="--c:'+col+'">backburner</div></div></div>';
         y+=RH;
       });
@@ -556,6 +558,43 @@ function endDrag(e){
 sheet.addEventListener('pointerup',endDrag);
 sheet.addEventListener('pointercancel',function(e){if(drag&&e.pointerId===drag.pid){drag=null;render()}});
 
+/* drag a task row onto another track (or the Backburner header) to move it there */
+var dragId=null,dropEl=null;
+function clearDrop(){if(dropEl){dropEl.classList.remove('drop');dropEl=null}}
+function dropInfo(node){
+  var el=node&&node.closest?node.closest('.row.g,.row[data-id]'):null;if(!el)return null;
+  if(el.classList.contains('g')){var g=el.getAttribute('data-g');return g==='__bb__'?{bb:1}:{g:g,bb:0}}
+  var t=byId(el.getAttribute('data-id'));if(!t)return null;
+  return t.bb?{bb:1}:{g:t.g,bb:0};
+}
+function dropHeader(info){
+  var q=info.bb?'__bb__':info.g,hs=sheet.querySelectorAll('.row.g');
+  for(var i=0;i<hs.length;i++)if(hs[i].getAttribute('data-g')===q)return hs[i];
+  return null;
+}
+sheet.addEventListener('dragstart',function(e){
+  var l=e.target.closest&&e.target.closest('.l[data-id]');
+  if(!l||!canWrite){if(e.preventDefault)e.preventDefault();return}
+  dragId=l.getAttribute('data-id');
+  try{e.dataTransfer.setData('text/plain',dragId);e.dataTransfer.effectAllowed='move'}catch(x){}
+});
+sheet.addEventListener('dragover',function(e){
+  if(!dragId)return;var info=dropInfo(e.target);if(!info)return;
+  e.preventDefault();try{e.dataTransfer.dropEffect='move'}catch(x){}
+  var h=dropHeader(info);if(h!==dropEl){clearDrop();dropEl=h;if(h)h.classList.add('drop')}
+});
+sheet.addEventListener('drop',function(e){
+  if(!dragId){clearDrop();return}
+  var info=dropInfo(e.target);clearDrop();
+  if(info){
+    e.preventDefault();
+    var ids=(sel.indexOf(dragId)>=0&&sel.length>1)?sel.slice():[dragId];
+    ids.forEach(function(id){var t=byId(id);if(!t)return;if(info.bb){t.bb=1;t.u=1}else{t.g=info.g;t.bb=0}});
+    dragId=null;commit();if(sel.length)fillEd();
+  }else dragId=null;
+});
+sheet.addEventListener('dragend',function(){clearDrop();dragId=null});
+
 /* toolbar */
 $('#filters').addEventListener('click',function(e){var b=e.target.closest('[data-o]');if(!b)return;filter=b.getAttribute('data-o')||null;render()});
 $('#zoom').addEventListener('click',function(e){
@@ -572,9 +611,18 @@ $('#fold').onclick=function(){
   $('#fold').textContent=allFolded?'Expand all':'Collapse all';render();
 };
 $('#add').onclick=function(){
-  if(!canWrite)return;
-  var t={id:uid(),g:'Planning & admin',n:'New task',o:'TBD',s:ds(Math.max(todayIdx,0)),e:ds(Math.max(todayIdx,0)+2),d:[],m:0,i:0,x:'',k:0};
-  tasks.push(t);collapsed[t.g]=false;filter=null;commit();selectOnly(t.id);
+  if(!canWrite)return;filter=null;
+  var after=sel.length?byId(sel[sel.length-1]):null,t;
+  if(after){
+    var s2=(after.u||after.bb)?after.s:ds(di(after.e)+1);
+    t={id:uid(),g:after.g,n:'New task',o:'TBD',s:s2,e:s2,d:[],m:0,i:0,x:'',k:0};
+    if(after.bb){t.bb=1;t.u=1}else if(after.u){t.u=1}
+    collapsed[t.g]=false;tasks.splice(tasks.indexOf(after)+1,0,t);
+  }else{
+    t={id:uid(),g:'Planning & admin',n:'New task',o:'TBD',s:ds(Math.max(todayIdx,0)),e:ds(Math.max(todayIdx,0)+2),d:[],m:0,i:0,x:'',k:0};
+    collapsed[t.g]=false;tasks.push(t);
+  }
+  commit();selectOnly(t.id);
   var r=sheet.querySelector('.row[data-id="'+t.id+'"]');if(r)r.scrollIntoView({block:'center'});
   $('#f-n').focus();$('#f-n').select();
 };
